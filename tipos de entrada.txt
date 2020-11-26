@@ -1,0 +1,11 @@
+acsh​> comando1 arg1 arg2 arg3 <3 ping -c 20 ufes.br <3 comando3 arg1 arg2 <3 comando4 <3 comando5
+
+acsh​> comando1 <3 ping -c 20 ufes.br
+
+acsh​> comando1
+
+acsh​> comando1 %
+
+acsh​> cd
+
+acsh​> exit
