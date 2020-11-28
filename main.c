@@ -11,14 +11,14 @@ int main(int argc, char* argv[]) {
     char* v[5];
     int pid[5];
     int filho = 0;
-    for(int j=0; j < 5; j++){
-        v[j] = (char*)malloc(sizeof(char)*50);
+    for (int j = 0; j < 5; j++) {
+        v[j] = (char*)malloc(sizeof(char) * 50);
     }
     while (1) {
         printf("acsh> ");
         while (scanf("%s", v[i]) == 1) {
             printf("%d %s \n", i, v[i]);
-            if (strcmp(v[i],"<3") == 0) {
+            if (strcmp(v[i], "<3") == 0) {
                 pid[filho] = fork();
                 printf("%d\n", pid[filho]);
                 if (pid[filho++] == 0) {

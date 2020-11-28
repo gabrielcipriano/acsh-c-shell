@@ -1,4 +1,4 @@
-acsh​> comando1 arg1  <3 ping -c 20 ufes.br <3 comando3 arg1 arg2 <3 comando4 <3 comando5
+acsh​> comando1 a1 a2 a3  <3 ping -c 20 ufes.br <3 comando3 arg1 arg2 <3 comando4 <3 comando5
 
 acsh​> comando1 <3 ping -c 20 ufes.br
 
@@ -9,3 +9,5 @@ acsh​> comando1 %
 acsh​> cd
 
 acsh​> exit
+
+acsh> aaaaaa a1 a2 a3  NULL bbbbb a1 a2 a3  NULL cccc a1 a2 a3  NULL dddd a1 a2 a3  <3 eeee a1 a2 a3 NULL
