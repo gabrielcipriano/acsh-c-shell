@@ -10,4 +10,4 @@ acsh​> cd
 
 acsh​> exit
 
-acsh> aaaaaa a1 a2 a3  NULL bbbbb a1 a2 a3  NULL cccc a1 a2 a3  NULL dddd a1 a2 a3  <3 eeee a1 a2 a3 NULL
+acsh> aaaaaa a1 a2 a3  <3 bbbbb a1 a2 a3  <3 cccc a1 a2 a3  <3 dddd a1 a2 a3  <3 eeee a1 a2 a3
