@@ -5,7 +5,6 @@
 
 void exitSafe(int status, char** v) {
     liberaVetor(v, MAX);
-    kill(-getpid(), SIGKILL);  //TODO: NAO TA FUNCIONANDO, descobrir um jeito de guardar as ids
     exit(status);
 }
 
@@ -15,12 +14,14 @@ void cleanBuffer() {
     };
 }
 
+//UTILSIGNAL
 void setSignalsIgnore() {
     signal(SIGINT, SIG_IGN);
     signal(SIGQUIT, SIG_IGN);
     signal(SIGTSTP, SIG_IGN);
 }
 
+//UTILSIGNAL
 void handlerVACINADO(int sig) {
     setSignalsIgnore();
     char c;
@@ -42,12 +43,14 @@ void handlerVACINADO(int sig) {
     setSignalsVacinado();
 }
 
+//UTILSIGNAL
 void setSignalsVacinado() {
     signal(SIGINT, handlerVACINADO);
     signal(SIGQUIT, handlerVACINADO);
     signal(SIGTSTP, handlerVACINADO);
 }
 
+//UTILSIGNAL
 void handlerSIGUSR1(int signal) {
     printf("SIGNAL: %d PID: %d\n", signal, getpid());
     exit(signal);
@@ -134,13 +137,28 @@ int qtdComandosBackground(char** v, int size) {
     return count;
 }
 
+//UTILSIGNAL
+void handler_MORTEDOACSH(int sig) {
+    printf("**FILHO: Acsh morreu, vou morrer tbm\n");
+    kill(-1 * getpid(), SIGKILL);  //matando filhos
+    exit(1);
+}
+
+//UTILSIGNAL
+void setPaiSignals() {
+    signal(SIGUSR1, SIG_IGN);
+    signal(SIGUSR2, handler_MORTEDOACSH);
+    prctl(PR_SET_PDEATHSIG, SIGUSR2);  //Recebe SIGUSR2 se o acsh morrer
+}
+
 void execBackgroundComands(char** v, int len) {
     int parentPid = forkAndCheck();
     if (parentPid == 0) {
         //pai dos processos/filhos
         setsid();
+        setPaiSignals();
 
-        // printf("PAI ID: %d\n", getpid());//DEBUG
+        printf("SESSION ID: %d\n", getpid());  //DEBUG
         pid_t pid;
         int bgn = 0;  //Auxiliar para definir o começo de um comando
 
@@ -171,11 +189,22 @@ void execBackgroundComands(char** v, int len) {
 
 //Executa um comando isolado
 void execBackgroundComand(char** v, int len) {
-    int pid = forkAndCheck();
-    if (pid == 0) {
+    int paiPid = forkAndCheck();
+    if (paiPid == 0) {
+        //pai do processo que executará o comando
         setsid();
-        signal(SIGUSR1, SIG_IGN);
-        execSliceOfVargs(v, 0, len - 1);
+        setPaiSignals();
+        printf("SESSION ID: %d\n", getpid());  //DEBUG
+
+        pid_t pid = forkAndCheck();
+
+        if (pid == 0) {
+            //Comando
+            execSliceOfVargs(v, 0, len - 1);
+        }
+        int status;
+        wait(&status);
+        exitSafe(0, v);
     }
 }
 

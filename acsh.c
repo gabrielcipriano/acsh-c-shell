@@ -50,6 +50,6 @@ int main(int argc, char* argv[]) {
             //qtdComandosBackground() == 1;
             execBackgroundComand(v, len);
         }
-        //sleep(1);  //Deixar comando de print instantâneo ganhar a corrida pelo stdout
+        sleep(1);  //Deixar comando de print instantâneo ganhar a corrida pelo stdout
     }
 }
