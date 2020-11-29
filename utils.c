@@ -139,14 +139,12 @@ int qtdComandosBackground(char** v, int size) {
 
 //UTILSIGNAL
 void handler_MORTEDOACSH(int sig) {
-    printf("**FILHO: Acsh morreu, vou morrer tbm\n");
     kill(-1 * getpid(), SIGKILL);  //matando filhos
     exit(1);
 }
 
 //UTILSIGNAL
 void setPaiSignals() {
-    signal(SIGUSR1, SIG_IGN);
     signal(SIGUSR2, handler_MORTEDOACSH);
     prctl(PR_SET_PDEATHSIG, SIGUSR2);  //Recebe SIGUSR2 se o acsh morrer
 }
@@ -193,6 +191,7 @@ void execBackgroundComand(char** v, int len) {
     if (paiPid == 0) {
         //pai do processo que executará o comando
         setsid();
+        signal(SIGUSR1, SIG_IGN);
         setPaiSignals();
         printf("SESSION ID: %d\n", getpid());  //DEBUG
 
