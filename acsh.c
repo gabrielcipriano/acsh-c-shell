@@ -1,47 +1,55 @@
+#include <errno.h>
+#include <stdio.h>
+
 #include "utils.h"
 
 int main(int argc, char* argv[]) {
+    setSignalsVacinado();
+
     getcwd(cwd, 100);
-    int i;
+    int len;
     char* v[SZSTR];
 
     alocaVetor(v, MAX);
 
     while (1) {
-        printf("acsh> ");
+        printf("%s", PRMPT);
 
         //Recebe um linha de input
-        i = getLine(v, i);
+        len = getLine(v);
 
-        char* last = v[i - 1];
+        char* lastWord = v[len - 1];
 
-        if (streq(last, "%")) {
-            runFgProcess(v, i);
+        if (streq(lastWord, "%")) {
+            setSignalsIgnore();
+            runFgProcess(v, len);
+            setSignalsVacinado();
             continue;
         }
         if (streq(v[0], "cd")) {
-            if (i != 2) {
+            if (len != 2) {
                 printf("quantidade errada de argumentos. Tente 'cd /nome/do/diretorio'\n");
             } else {
-                changeDir(last);
+                changeDir(lastWord);
             }
             continue;
         }
-        if (streq(last, "exit") && i == 1) {
-            return liberaVetor(v, MAX);
+        if (streq(lastWord, "exit") && len == 1) {
+            exitSafe(0, v);
         }
 
         int qtdComandosBg;
-        if ((qtdComandosBg = qtdComandosBackground(v, i)) == -1) {
+        if ((qtdComandosBg = qtdComandosBackground(v, len)) == -1) {
             printf("ERRO: Quantidade de comandos maior que o esperado.\n");
             printf("      Maximo: 5 comandos.\n");
             continue;
         }
         if (qtdComandosBg > 1) {
-            execBackgroundComands(v, i);
+            execBackgroundComands(v, len);
         } else {
             //qtdComandosBackground() == 1;
-            execBackgroundComand(v, i);
+            execBackgroundComand(v, len);
         }
+        //sleep(1);  //Deixar comando de print instantâneo ganhar a corrida pelo stdout
     }
 }

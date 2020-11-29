@@ -3,23 +3,70 @@
 #include <stdio.h>
 #include <string.h>
 
+void exitSafe(int status, char** v) {
+    liberaVetor(v, MAX);
+    kill(-getpid(), SIGKILL);  //TODO: NAO TA FUNCIONANDO, descobrir um jeito de guardar as ids
+    exit(status);
+}
+
+void cleanBuffer() {
+    while ((getchar()) != '\n') {
+        //cleaning
+    };
+}
+
+void setSignalsIgnore() {
+    signal(SIGINT, SIG_IGN);
+    signal(SIGQUIT, SIG_IGN);
+    signal(SIGTSTP, SIG_IGN);
+}
+
+void handlerVACINADO(int sig) {
+    setSignalsIgnore();
+    char c;
+    switch (sig) {
+        case SIGINT:
+            c = 'C';
+            break;
+        case SIGQUIT:
+            c = '\\';
+            break;
+        case SIGTSTP:
+            c = 'Z';
+            break;
+        default:  //Never gonna happen
+            c = '.';
+            break;
+    }
+    printf("Não adianta me enviar o sinal por Ctrl-%c. Estou vacinado!!\n", c);
+    setSignalsVacinado();
+}
+
+void setSignalsVacinado() {
+    signal(SIGINT, handlerVACINADO);
+    signal(SIGQUIT, handlerVACINADO);
+    signal(SIGTSTP, handlerVACINADO);
+}
+
 void handlerSIGUSR1(int signal) {
     printf("SIGNAL: %d PID: %d\n", signal, getpid());
     exit(signal);
 }
 
-int getLine(char** v, int i) {
-    i = 0;
-    while (scanf("%s", v[i]) == 1) {
-        i++;
+int getLine(char** v) {
+    int len = 0;
+    while (scanf("%s", v[len]) == 1) {
+        len++;
         if (getchar() == '\n') {
             break;
         }
-        if (i == MAX - 1) {  //Limite de input atingido
-            printf("Quantidade maxima de words atingida, tente novamente.");
+        if (len == MAX - 1) {  //Limite de input atingido
+            printf("Quantidade maxima de words atingida, tente novamente.\n%s", PRMPT);
+            cleanBuffer();
+            len = 0;
         }
     }
-    return i;
+    return len;
 }
 
 pid_t forkAndCheck() {
@@ -31,13 +78,25 @@ pid_t forkAndCheck() {
     return pid;
 }
 
-int runFgProcess(char** v, int size) {
+void execSliceOfVargs(char** v, int bgn, int lst) {
+    if (lst - bgn > 4) {  //Checa se tem mais de 3 argumentos num comando.
+        printf("ERRO: Numero de argumentos maior que o esperado. Maximo 3 args.\n");
+        printf("      Comando %s ignorado.\n", v[bgn]);
+    } else {
+        v[lst + 1] = NULL;
+        char** argv = v + bgn;
+        execvp(argv[0], argv);
+        printf("Algo deu errado com o comando %s. \n ERRO: %s\n", argv[0], strerror(errno));
+    }
+    liberaVetor(v, MAX);
+    exit(1);
+}
+
+int runFgProcess(char** v, int len) {
     pid_t pid = forkAndCheck();
 
     if (pid == 0) {
-        v[size - 1] = NULL;
-        execvp(v[0], v);
-        printf("Algo deu errado \n");
+        execSliceOfVargs(v, 0, len - 2);
     } else {
         int status;
         waitpid(pid, &status, 0);
@@ -75,64 +134,48 @@ int qtdComandosBackground(char** v, int size) {
     return count;
 }
 
-void execSliceOfVargs(char** v, int bgn, int lst) {
-    if (lst - bgn > 4) {  //Checa se tem mais de 3 argumentos num comando.
-        printf("ERRO: Numero de argumentos maior que o esperado. Maximo 3 args.\n");
-        printf("      Comando %s ignorado.\n", v[bgn]);
-    } else {
-        v[lst] = NULL;
-        char** argv = v + bgn;
-        execvp(argv[0], argv);
-        printf("Algo deu errado com o comando %s. \n ERRO: %s\n", argv[0], strerror(errno));
-    }
-    liberaVetor(v, MAX);
-    exit(1);
-}
-
-void execBackgroundComands(char** v, int sz) {
+void execBackgroundComands(char** v, int len) {
     int parentPid = forkAndCheck();
     if (parentPid == 0) {
         //pai dos processos/filhos
         setsid();
+
+        // printf("PAI ID: %d\n", getpid());//DEBUG
         pid_t pid;
         int bgn = 0;  //Auxiliar para definir o começo de um comando
 
-        //A ultima posição tambem recebe um "<3" para generalizar o loop
-        v[sz] = "<3";
+        //A posição seguinte da ultima tambem recebe um "<3" para generalizar o loop
+        strcpy(v[len], "<3");
 
         //Percorre pelo vetor de comandos
-        for (int j = 0; j <= sz; j++) {
+        for (int j = 0; j <= len; j++) {
             if (streq(v[j], "<3")) {
                 pid = forkAndCheck();
                 if (pid == 0) {
-                    //FILHO
-                    signal(SIGUSR1, handlerSIGUSR1);
-                    printf("Comando: %s PID: %d\n", v[bgn], getpid());
-                    execSliceOfVargs(v, bgn, j);
+                    // printf("Comando: %s PID: %d\n", v[bgn], getpid()); //Debug
+                    execSliceOfVargs(v, bgn, j - 1);
                 }
                 bgn = j + 1;  // Passa para o proximo comando
             }
         }
-
         // Lidando com os filhos
-        // int status;
-        // while (wait(&status) > 0) {
-        //     if (WEXITSTATUS(status) == SIGUSR1) {
-        //         printf("MEU FILHO MORREU DE COVID!!\n");
-        //         kill(-getpid(), SIGKILL);
-        //     }
-        // }
-        liberaVetor(v, MAX);
-        exit(1);
+        int status;
+        while (wait(&status) > 0) {
+            if (status == SIGUSR1) {
+                kill(-getpid(), SIGKILL);  //Mata todos os filhos
+            }
+        }
+        exitSafe(0, v);  //Todos filhos finalizaram
     }
 }
 
 //Executa um comando isolado
-void execBackgroundComand(char** v, int lst) {
+void execBackgroundComand(char** v, int len) {
     int pid = forkAndCheck();
     if (pid == 0) {
+        setsid();
         signal(SIGUSR1, SIG_IGN);
-        execSliceOfVargs(v, 0, lst);
+        execSliceOfVargs(v, 0, len - 1);
     }
 }
 
