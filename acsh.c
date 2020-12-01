@@ -1,55 +1,78 @@
-#include <errno.h>
 #include <stdio.h>
 
+#include "process.h"
 #include "utils.h"
+#include "utilsSignal.h"
+
+// Lidando com comando foreground
+int isForegroundCommand(char** v, int len) {
+    return streq(v[len - 1], "%");
+}
+void doForegroundCommand(char** v, int len) {
+    setSignalsIgnore();
+    execForegroundCommand(v, len);
+    setSignalsVacinado();
+}
+
+//Lidando com a operação interna cd
+int isCdOperation(char** v, int len) {
+    return (streq(v[0], "cd"));
+}
+void doCdOperation(char** v, int len) {
+    if (len != 2) {
+        printf("quantidade errada de argumentos. Tente 'cd /nome/do/diretorio'\n");
+    } else {
+        changeDir(v[1]);
+    }
+}
+
+// Lidando com a operação interna exit
+int isExitOperation(char** v, int len) {
+    return (streq(v[0], "exit") && len == 1);
+}
+
+// Lidando com o um ou mais processos background
+void dealWithBackgroundCommands(char** v, int len) {
+    int quantidadeComandosBg = qtdComandosBackground(v, len);
+    switch (quantidadeComandosBg) {
+        case -1:  //error code
+            printf("ERRO: Quantidade de comandos maior que o esperado.\n");
+            printf("      Maximo: 5 comandos.\n");
+            break;
+        case 1:
+            execBackgroundCommand(v, len);
+            break;
+        default:
+            execBackgroundCommands(v, len);
+            break;
+    }
+}
 
 int main(int argc, char* argv[]) {
     setSignalsVacinado();
+    getcwd(cwd, 100);  //armazena diretório atual
 
-    getcwd(cwd, 100);
-    int len;
+    int len;  //quantidade de words numa linha
     char* v[SZSTR];
-
     alocaVetor(v, MAX);
 
     while (1) {
         printf("%s", PRMPT);
-
-        //Recebe um linha de input
+        //Recebe um linha de input e armazena em v
         len = getLine(v);
 
-        char* lastWord = v[len - 1];
-
-        if (streq(lastWord, "%")) {
-            setSignalsIgnore();
-            runFgProcess(v, len);
-            setSignalsVacinado();
+        if (isForegroundCommand(v, len)) {
+            doForegroundCommand(v, len);
             continue;
         }
-        if (streq(v[0], "cd")) {
-            if (len != 2) {
-                printf("quantidade errada de argumentos. Tente 'cd /nome/do/diretorio'\n");
-            } else {
-                changeDir(lastWord);
-            }
+        if (isCdOperation(v, len)) {
+            doCdOperation(v, len);
             continue;
         }
-        if (streq(lastWord, "exit") && len == 1) {
+        if (isExitOperation(v, len)) {
             exitSafe(0, v);
         }
-
-        int qtdComandosBg;
-        if ((qtdComandosBg = qtdComandosBackground(v, len)) == -1) {
-            printf("ERRO: Quantidade de comandos maior que o esperado.\n");
-            printf("      Maximo: 5 comandos.\n");
-            continue;
-        }
-        if (qtdComandosBg > 1) {
-            execBackgroundComands(v, len);
-        } else {
-            //qtdComandosBackground() == 1;
-            execBackgroundComand(v, len);
-        }
-        sleep(1);  //Deixar comando de print instantâneo ganhar a corrida pelo stdout
+        dealWithBackgroundCommands(v, len);
+        //sleep(1);  //Deixar comando de print instantâneo ganhar a corrida pelo stdout
     }
 }

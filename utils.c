@@ -1,8 +1,5 @@
 #include "utils.h"
 
-#include <stdio.h>
-#include <string.h>
-
 void exitSafe(int status, char** v) {
     liberaVetor(v, MAX);
     exit(status);
