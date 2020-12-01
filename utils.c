@@ -11,12 +11,27 @@ void cleanBuffer() {
     };
 }
 
+//retorna o próximo caractere não-whitespace do stdin
+char getNextNonWhitespaceChar() {
+    char ch;
+    do {
+        ch = getchar();
+    } while (ch == ' ');
+    return ch;
+}
+
 int getLine(char** v) {
     int len = 0;
+    char tmpchar;
     while (scanf("%s", v[len]) == 1) {
         len++;
-        if (getchar() == '\n') {
+        tmpchar = getNextNonWhitespaceChar();
+        if (tmpchar == '\n') {
+            //fim da linha
             break;
+        } else {
+            //"devolve" o caractere para stdin pois ele pertece á próxima word
+            ungetc(tmpchar, stdin);
         }
         if (len == MAX - 1) {  //Limite de input atingido
             printf("Quantidade maxima de words atingida, tente novamente.\n%s", PRMPT);
